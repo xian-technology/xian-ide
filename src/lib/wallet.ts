@@ -11,14 +11,19 @@ export interface WalletInfo {
 }
 
 export function isWalletAvailable(): boolean {
-  return typeof window !== "undefined" && "xian" in window;
+  return typeof window !== "undefined" && !!(window as any).xian?.provider;
+}
+
+function getProvider(): { request(args: { method: string; params?: unknown[] }): Promise<unknown>; on(event: string, cb: (...args: unknown[]) => void): void; removeListener(event: string, cb: (...args: unknown[]) => void): void } {
+  const provider = (window as any).xian?.provider;
+  if (!provider) {
+    throw new Error("Xian wallet extension not detected. Install it and reload.");
+  }
+  return provider;
 }
 
 async function request(method: string, params?: unknown[]): Promise<unknown> {
-  if (!isWalletAvailable()) {
-    throw new Error("Xian wallet extension not detected. Install it and reload.");
-  }
-  return (window as any).xian.request({ method, params: params ?? [] });
+  return getProvider().request({ method, params: params ?? [] });
 }
 
 export async function connect(): Promise<string[]> {
@@ -51,14 +56,16 @@ export async function signMessage(message: string): Promise<string> {
 // Listen for account/chain changes
 export function onAccountsChanged(cb: (accounts: string[]) => void): () => void {
   if (!isWalletAvailable()) return () => {};
-  const handler = (accounts: string[]) => cb(accounts);
-  (window as any).xian.on("accountsChanged", handler);
-  return () => (window as any).xian.removeListener("accountsChanged", handler);
+  const p = getProvider();
+  const handler = (accounts: unknown) => cb(accounts as string[]);
+  p.on("accountsChanged", handler);
+  return () => p.removeListener("accountsChanged", handler);
 }
 
 export function onChainChanged(cb: (chainId: string) => void): () => void {
   if (!isWalletAvailable()) return () => {};
-  const handler = (chainId: string) => cb(chainId);
-  (window as any).xian.on("chainChanged", handler);
-  return () => (window as any).xian.removeListener("chainChanged", handler);
+  const p = getProvider();
+  const handler = (chainId: unknown) => cb(chainId as string);
+  p.on("chainChanged", handler);
+  return () => p.removeListener("chainChanged", handler);
 }

@@ -54,6 +54,7 @@ export default function App() {
   const [networkInput, setNetworkInput] = useState(ide.networkUrl);
   const [contractInput, setContractInput] = useState("");
   const [deployName, setDeployName] = useState("");
+  const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll console
@@ -69,19 +70,33 @@ export default function App() {
       <div className="sidebar-section" style={{ flex: 1, overflow: "auto" }}>
         <div className="sidebar-header">
           <span>Files</span>
-          <div className="btn-row">
+          <button
+            className="ide-btn ide-btn-ghost ide-btn-icon"
+            title="New file from template"
+            onClick={() => setShowTemplateMenu((v) => !v)}
+          >
+            <Plus size={14} />
+          </button>
+        </div>
+        {showTemplateMenu && (
+          <div style={{ padding: "0 8px 8px" }}>
             {TEMPLATES.map((t) => (
-              <button
+              <div
                 key={t.id}
-                className="ide-btn ide-btn-ghost ide-btn-icon"
-                title={`New ${t.name}`}
-                onClick={() => ide.createFile(`${t.id}.py`, t.code)}
+                className="file-item"
+                onClick={() => {
+                  ide.createFile(`${t.id}.py`, t.code);
+                  setShowTemplateMenu(false);
+                }}
               >
-                <Plus size={14} />
-              </button>
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <FileCode size={14} />
+                  {t.name}
+                </span>
+              </div>
             ))}
           </div>
-        </div>
+        )}
         <div className="sidebar-content">
           {ide.files.length === 0 && (
             <div style={{ color: "var(--muted)", fontSize: 12, padding: "8px 4px" }}>

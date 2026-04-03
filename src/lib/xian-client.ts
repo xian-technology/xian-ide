@@ -1,0 +1,115 @@
+/**
+ * Xian RPC client for the IDE.
+ * Wraps ABCI queries for contract source, methods, state, simulation, and deployment.
+ */
+
+const DEFAULT_RPC = "http://127.0.0.1:26657";
+
+let rpcUrl = DEFAULT_RPC;
+
+export function setRpcUrl(url: string) {
+  rpcUrl = url.replace(/\/+$/, "");
+}
+
+export function getRpcUrl(): string {
+  return rpcUrl;
+}
+
+function base64ToUtf8(b64: string): string {
+  return new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)));
+}
+
+async function abciQuery(path: string): Promise<unknown> {
+  const url = `${rpcUrl}/abci_query?path=%22${encodeURIComponent(path)}%22`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`RPC error: ${resp.status}`);
+  const data = await resp.json();
+  const value = data?.result?.response?.value;
+  if (!value) return null;
+  try {
+    return JSON.parse(base64ToUtf8(value));
+  } catch {
+    return base64ToUtf8(value);
+  }
+}
+
+// ── Contract queries ──────────────────────────────────────────
+
+export async function getContractSource(contract: string): Promise<string | null> {
+  const result = await abciQuery(`/contract/${contract}`);
+  return typeof result === "string" ? result : null;
+}
+
+export async function getContractMethods(
+  contract: string
+): Promise<Array<{ name: string; arguments: Array<{ name: string; type: string }> }>> {
+  const result = await abciQuery(`/contract_methods/${contract}`);
+  return Array.isArray(result) ? result : [];
+}
+
+export async function getContractVars(contract: string): Promise<string[]> {
+  const result = await abciQuery(`/contract_vars/${contract}`);
+  return Array.isArray(result) ? result : [];
+}
+
+export async function getState(key: string): Promise<unknown> {
+  return abciQuery(`/get/${key}`);
+}
+
+// ── Simulation ────────────────────────────────────────────────
+
+export interface SimulationResult {
+  success: boolean;
+  stampsUsed: number;
+  result: unknown;
+  error?: string;
+  stateChanges?: Record<string, unknown>;
+}
+
+export async function simulate(payload: {
+  sender: string;
+  contract: string;
+  function: string;
+  kwargs: Record<string, unknown>;
+}): Promise<SimulationResult> {
+  const hex = Array.from(new TextEncoder().encode(JSON.stringify(payload)))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  const data = await abciQuery(`/simulate/${hex}`);
+  if (!data || typeof data !== "object") {
+    return { success: false, stampsUsed: 0, result: null, error: "No simulation result" };
+  }
+  const d = data as Record<string, unknown>;
+  return {
+    success: d.success === true,
+    stampsUsed: Number(d.stamps_used ?? 0),
+    result: d.result ?? null,
+    error: typeof d.error === "string" ? d.error : undefined,
+    stateChanges: typeof d.state_changes === "object" ? d.state_changes as Record<string, unknown> : undefined,
+  };
+}
+
+// ── Chain info ────────────────────────────────────────────────
+
+export async function getChainId(): Promise<string> {
+  const resp = await fetch(`${rpcUrl}/status`);
+  if (!resp.ok) throw new Error(`RPC error: ${resp.status}`);
+  const data = await resp.json();
+  return data?.result?.node_info?.network ?? "unknown";
+}
+
+export async function getNonce(address: string): Promise<number> {
+  const result = await abciQuery(`/get_next_nonce/${address}`);
+  return Number(result ?? 0);
+}
+
+// ── Health check ──────────────────────────────────────────────
+
+export async function checkConnection(): Promise<boolean> {
+  try {
+    const resp = await fetch(`${rpcUrl}/status`, { signal: AbortSignal.timeout(3000) });
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}

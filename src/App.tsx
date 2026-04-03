@@ -1,10 +1,49 @@
 import { useState, useRef, useEffect } from "react";
-import Editor from "@monaco-editor/react";
+import Editor, { type Monaco } from "@monaco-editor/react";
 import {
   Play, Upload, Search, Plus, X, Trash2, Terminal, Code2,
   Wallet, Eye, FileCode, Plug, Braces
 } from "lucide-react";
 import { useIDE } from "./hooks/useIDE";
+
+function handleEditorWillMount(monaco: Monaco) {
+  monaco.editor.defineTheme("xian-dark", {
+    base: "vs-dark",
+    inherit: true,
+    rules: [
+      { token: "comment", foreground: "6e6e82", fontStyle: "italic" },
+      { token: "keyword", foreground: "22c55e" },
+      { token: "string", foreground: "faad14" },
+      { token: "number", foreground: "ff8c42" },
+      { token: "type", foreground: "60a5fa" },
+      { token: "function", foreground: "c084fc" },
+      { token: "variable", foreground: "e8e8ef" },
+      { token: "operator", foreground: "6e6e82" },
+      { token: "decorator", foreground: "22c55e", fontStyle: "bold" },
+    ],
+    colors: {
+      "editor.background": "#0a0a0f",
+      "editor.foreground": "#e8e8ef",
+      "editor.lineHighlightBackground": "#12121a",
+      "editor.selectionBackground": "#22c55e30",
+      "editor.inactiveSelectionBackground": "#22c55e15",
+      "editorCursor.foreground": "#22c55e",
+      "editorLineNumber.foreground": "#3a3a50",
+      "editorLineNumber.activeForeground": "#6e6e82",
+      "editorIndentGuide.background": "#1c1c28",
+      "editorIndentGuide.activeBackground": "#2a2a40",
+      "editorWidget.background": "#12121a",
+      "editorWidget.border": "#1c1c28",
+      "editorSuggestWidget.background": "#12121a",
+      "editorSuggestWidget.border": "#1c1c28",
+      "editorSuggestWidget.selectedBackground": "#22c55e20",
+      "input.background": "#0a0a0f",
+      "input.border": "#1c1c28",
+      "scrollbarSlider.background": "#ffffff15",
+      "scrollbarSlider.hoverBackground": "#ffffff25",
+    },
+  });
+}
 import { TEMPLATES } from "./lib/contract-templates";
 import "./styles/ide.css";
 
@@ -167,16 +206,17 @@ export default function App() {
       <div className="editor-area">
         {ide.activeFile ? (
           <Editor
-            theme="vs-dark"
+            theme="xian-dark"
             language="python"
             value={ide.activeFile.code}
+            beforeMount={handleEditorWillMount}
             onChange={(val) => {
               if (val !== undefined && ide.activeFileId) {
                 ide.updateFileCode(ide.activeFileId, val);
               }
             }}
             options={{
-              fontSize: 14,
+              fontSize: 12,
               fontFamily: "var(--font-mono)",
               minimap: { enabled: false },
               scrollBeyondLastLine: false,

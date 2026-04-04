@@ -66,27 +66,57 @@ export interface SimulationResult {
   stateChanges?: Record<string, unknown>;
 }
 
+function sortedJsonEncode(obj: unknown): string {
+  if (obj === null || obj === undefined) return JSON.stringify(obj);
+  if (Array.isArray(obj)) return `[${obj.map(sortedJsonEncode).join(",")}]`;
+  if (typeof obj === "object") {
+    const sorted = Object.keys(obj as Record<string, unknown>).sort();
+    const entries = sorted.map(
+      (k) => `${JSON.stringify(k)}:${sortedJsonEncode((obj as Record<string, unknown>)[k])}`
+    );
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(obj);
+}
+
 export async function simulate(payload: {
   sender: string;
   contract: string;
   function: string;
   kwargs: Record<string, unknown>;
 }): Promise<SimulationResult> {
-  const hex = Array.from(new TextEncoder().encode(JSON.stringify(payload)))
+  const encoded = sortedJsonEncode(payload);
+  const hex = Array.from(new TextEncoder().encode(encoded))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  const data = await abciQuery(`/simulate/${hex}`);
-  if (!data || typeof data !== "object") {
-    return { success: false, stampsUsed: 0, result: null, error: "No simulation result" };
+
+  const url = `${rpcUrl}/abci_query?path=%22/simulate_tx/${hex}%22`;
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    return { success: false, stampsUsed: 0, result: null, error: `RPC error: ${resp.status}` };
   }
-  const d = data as Record<string, unknown>;
-  return {
-    success: d.success === true,
-    stampsUsed: Number(d.stamps_used ?? 0),
-    result: d.result ?? null,
-    error: typeof d.error === "string" ? d.error : undefined,
-    stateChanges: typeof d.state_changes === "object" ? d.state_changes as Record<string, unknown> : undefined,
-  };
+  const raw = await resp.json();
+  const response = raw?.result?.response;
+  if (!response) {
+    return { success: false, stampsUsed: 0, result: null, error: "No simulation response" };
+  }
+
+  if (response.code !== 0) {
+    return { success: false, stampsUsed: 0, result: null, error: response.log ?? `code ${response.code}` };
+  }
+
+  try {
+    const decoded = JSON.parse(base64ToUtf8(response.value));
+    return {
+      success: decoded.status === 0,
+      stampsUsed: Number(decoded.stamps_used ?? 0),
+      result: decoded.result ?? null,
+      error: decoded.status !== 0 ? String(decoded.result ?? "Simulation failed") : undefined,
+      stateChanges: typeof decoded.state_changes === "object" ? decoded.state_changes : undefined,
+    };
+  } catch {
+    return { success: false, stampsUsed: 0, result: null, error: "Failed to parse simulation result" };
+  }
 }
 
 // ── Chain info ────────────────────────────────────────────────

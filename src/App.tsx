@@ -55,6 +55,14 @@ export default function App() {
   const [contractInput, setContractInput] = useState("");
   const [deployName, setDeployName] = useState("");
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2000);
+  };
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll console
@@ -311,7 +319,7 @@ export default function App() {
             title="Click to copy"
             onClick={() => {
               navigator.clipboard.writeText(entry.message);
-              ide.log("info", "Copied to clipboard");
+              showToast("Copied to clipboard");
             }}
           >
             <span className="console-time">
@@ -397,6 +405,7 @@ export default function App() {
           {bottomPanel}
         </div>
       </div>
+      {toast && <div className="ide-toast">{toast}</div>}
     </div>
   );
 }

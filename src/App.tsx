@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
 import {
   Upload, Search, Plus, X, Trash2, Terminal, Code2,
   Wallet, FileCode, Plug, Braces, AlertTriangle
@@ -55,6 +56,10 @@ export default function App() {
   const [contractInput, setContractInput] = useState("");
   const [deployName, setDeployName] = useState("");
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const ideRef = useRef(ide);
+  ideRef.current = ide;
+  const deployNameRef = useRef(deployName);
+  deployNameRef.current = deployName;
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -64,6 +69,54 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToast(null), 2000);
   };
   const consoleEndRef = useRef<HTMLDivElement>(null);
+
+  const handleEditorMount = useCallback((editorInstance: editor.IStandaloneCodeEditor, monaco: Monaco) => {
+    // Register custom Xian commands in the command palette
+    editorInstance.addAction({
+      id: "xian.deploy",
+      label: "Xian: Deploy Contract",
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyD],
+      run: () => {
+        const i = ideRef.current;
+        const name = deployNameRef.current.trim();
+        if (!i.activeFile) { i.log("error", "No file open"); return; }
+        if (!name) { i.log("error", "Enter a contract name in the Deploy panel first"); return; }
+        if (!i.walletConnected) { i.log("error", "Connect wallet first"); return; }
+        i.deployContract(name, i.activeFile.code);
+      },
+    });
+
+    editorInstance.addAction({
+      id: "xian.lint",
+      label: "Xian: Lint Contract",
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL],
+      run: () => { ideRef.current.lintCurrentFile(); },
+    });
+
+    editorInstance.addAction({
+      id: "xian.connectWallet",
+      label: "Xian: Connect Wallet",
+      run: () => { ideRef.current.connectWallet(); },
+    });
+
+    editorInstance.addAction({
+      id: "xian.loadFromChain",
+      label: "Xian: Load Contract from Chain",
+      run: () => {
+        const name = prompt("Contract name:");
+        if (name?.trim()) ideRef.current.loadContractFromChain(name.trim());
+      },
+    });
+
+    editorInstance.addAction({
+      id: "xian.queryState",
+      label: "Xian: Query State",
+      run: () => {
+        const key = prompt("State key (contract.variable:key):");
+        if (key?.trim()) ideRef.current.queryState(key.trim());
+      },
+    });
+  }, []);
 
   // Auto-scroll console
   useEffect(() => {
@@ -251,6 +304,7 @@ export default function App() {
             language="python"
             value={ide.activeFile.code}
             beforeMount={handleEditorWillMount}
+            onMount={handleEditorMount}
             onChange={(val) => {
               if (val !== undefined && ide.activeFileId) {
                 ide.updateFileCode(ide.activeFileId, val);

@@ -3,7 +3,7 @@ import Editor, { type Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import {
   Upload, Search, Plus, X, Trash2, Terminal, Code2,
-  Wallet, FileCode, Plug, Braces, AlertTriangle
+  Wallet, FileCode, Plug, Braces, AlertTriangle, Command
 } from "lucide-react";
 import { useIDE } from "./hooks/useIDE";
 
@@ -56,6 +56,7 @@ export default function App() {
   const [contractInput, setContractInput] = useState("");
   const [deployName, setDeployName] = useState("");
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const ideRef = useRef(ide);
   ideRef.current = ide;
   const deployNameRef = useRef(deployName);
@@ -71,13 +72,8 @@ export default function App() {
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
   const handleEditorMount = useCallback((editorInstance: editor.IStandaloneCodeEditor, monaco: Monaco) => {
-    // Ensure Cmd+Shift+P opens the command palette
-    editorInstance.addAction({
-      id: "xian.commandPalette",
-      label: "Open Command Palette",
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyP],
-      run: (ed) => { ed.trigger("keyboard", "editor.action.quickCommand", null); },
-    });
+    // Store editor ref so we can trigger command palette from UI
+    editorRef.current = editorInstance;
 
     // Register custom Xian commands in the command palette
     editorInstance.addAction({
@@ -125,6 +121,25 @@ export default function App() {
       },
     });
   }, []);
+
+  const openCommandPalette = useCallback(() => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+      editorRef.current.trigger("keyboard", "editor.action.quickCommand", null);
+    }
+  }, []);
+
+  // Global Cmd/Ctrl+K to open command palette (doesn't conflict with browser)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        openCommandPalette();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [openCommandPalette]);
 
   // Auto-scroll console
   useEffect(() => {
@@ -404,6 +419,15 @@ export default function App() {
           <span className="ide-brand">Xian IDE</span>
         </div>
         <div className="ide-header-right">
+          {/* Command palette */}
+          <button
+            className="ide-btn ide-btn-ghost ide-btn-sm"
+            onClick={openCommandPalette}
+            title="Command Palette (⌘K)"
+          >
+            <Command size={14} /> Commands
+          </button>
+
           {/* Network */}
           <div
             className="status-badge"

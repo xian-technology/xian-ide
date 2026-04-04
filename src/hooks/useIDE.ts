@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import * as rpc from "../lib/xian-client";
 import * as wallet from "../lib/wallet";
+import * as linter from "../lib/linter";
 
 export interface ContractFile {
   id: string;
@@ -46,6 +47,8 @@ export function useIDE() {
   // Loading states
   const [deploying, setDeploying] = useState(false);
   const [simulating, setSimulating] = useState(false);
+  const [linting, setLinting] = useState(false);
+  const [linterAvailable, setLinterAvailable] = useState(false);
 
   const idCounter = useRef(0);
   const genId = () => `f${++idCounter.current}`;
@@ -118,6 +121,7 @@ export function useIDE() {
   useEffect(() => {
     rpc.setRpcUrl(networkUrl);
     rpc.checkConnection().then(setNetworkOnline);
+    linter.checkLinterAvailable().then(setLinterAvailable);
   }, [networkUrl]);
 
   // ── Wallet ─────────────────────────────────────────────────
@@ -237,7 +241,7 @@ export function useIDE() {
           ? Math.ceil(estResult.stampsUsed * 1.3)
           : 500000;
 
-        const result = await wallet.sendTransaction({
+        const result = await wallet.sendCall({
           contract: "submission",
           function: "submit_contract",
           kwargs: { name, code },
@@ -277,7 +281,7 @@ export function useIDE() {
           stampCount = est.success ? Math.ceil(est.stampsUsed * 1.3) : 50000;
         }
 
-        const result = await wallet.sendTransaction({
+        const result = await wallet.sendCall({
           contract,
           function: func,
           kwargs,
@@ -350,5 +354,29 @@ export function useIDE() {
     queryState,
     deploying,
     simulating,
+
+    // Linter
+    linting,
+    linterAvailable,
+    lintCurrentFile: useCallback(async () => {
+      if (!activeFile) { log("error", "No file open"); return; }
+      setLinting(true);
+      try {
+        const result = await linter.lintCode(activeFile.code);
+        if (result.success) {
+          log("success", "Lint passed — no errors");
+        } else {
+          for (const err of result.errors) {
+            const loc = err.line ? ` (line ${err.line}${err.col ? `:${err.col}` : ""})` : "";
+            log("error", `[${err.code}]${loc} ${err.message}`);
+          }
+          log("error", `Lint: ${result.errors.length} error(s)`);
+        }
+      } catch (e) {
+        log("error", `Lint failed: ${e instanceof Error ? e.message : String(e)}`);
+      } finally {
+        setLinting(false);
+      }
+    }, [activeFile, log]),
   };
 }

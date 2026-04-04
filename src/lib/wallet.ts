@@ -40,13 +40,18 @@ export async function getAccounts(): Promise<string[]> {
   return (await request("xian_accounts")) as string[];
 }
 
-export async function sendTransaction(payload: {
+export async function sendCall(payload: {
   contract: string;
   function: string;
   kwargs: Record<string, unknown>;
   stamps: number;
 }): Promise<unknown> {
-  return request("xian_sendTransaction", [payload]);
+  return request("xian_sendCall", [{
+    contract: payload.contract,
+    function: payload.function,
+    kwargs: payload.kwargs,
+    stamps: payload.stamps,
+  }]);
 }
 
 export async function signMessage(message: string): Promise<string> {

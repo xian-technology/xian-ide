@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
 import {
   Play, Upload, Search, Plus, X, Trash2, Terminal, Code2,
-  Wallet, Eye, FileCode, Plug, Braces
+  Wallet, Eye, FileCode, Plug, Braces, AlertTriangle
 } from "lucide-react";
 import { useIDE } from "./hooks/useIDE";
 
@@ -122,6 +122,14 @@ export default function App() {
         </div>
       </div>
 
+      {/* Query State */}
+      <div className="sidebar-section">
+        <div className="sidebar-header">Query State</div>
+        <div className="sidebar-content">
+          <StateQuery onQuery={ide.queryState} />
+        </div>
+      </div>
+
       {/* Load from chain */}
       <div className="sidebar-section">
         <div className="sidebar-header">Load from Chain</div>
@@ -164,11 +172,21 @@ export default function App() {
         </div>
       </div>
 
-      {/* Deploy */}
+      {/* Lint & Deploy */}
       <div className="sidebar-section">
-        <div className="sidebar-header">Deploy</div>
+        <div className="sidebar-header">Lint & Deploy</div>
         <div className="sidebar-content">
           <div className="field-group">
+            <button
+              className="ide-btn ide-btn-secondary ide-btn-sm"
+              disabled={!ide.activeFile || ide.linting}
+              onClick={ide.lintCurrentFile}
+              style={{ width: "100%" }}
+            >
+              <AlertTriangle size={12} />
+              {ide.linting ? "Linting..." : "Lint Contract"}
+              {!ide.linterAvailable && <span style={{ fontSize: 10, opacity: 0.6 }}>(offline)</span>}
+            </button>
             <input
               className="ide-input ide-input-mono"
               placeholder="contract_name"
@@ -289,12 +307,6 @@ export default function App() {
           ))}
         </div>
       )}
-
-      {/* State query */}
-      <div className="right-section">
-        <div className="right-section-title">Query State</div>
-        <StateQuery onQuery={ide.queryState} />
-      </div>
 
       {/* Variables */}
       {ide.loadedVars.length > 0 && (

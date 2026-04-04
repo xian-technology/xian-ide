@@ -47,10 +47,12 @@ export async function sendCall(payload: {
   stamps: number;
 }): Promise<unknown> {
   return request("xian_sendCall", [{
-    contract: payload.contract,
-    function: payload.function,
-    kwargs: payload.kwargs,
-    stamps: payload.stamps,
+    intent: {
+      contract: payload.contract,
+      function: payload.function,
+      kwargs: payload.kwargs,
+      stamps: payload.stamps,
+    },
   }]);
 }
 

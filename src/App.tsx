@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
 import {
-  Play, Upload, Search, Plus, X, Trash2, Terminal, Code2,
-  Wallet, Eye, FileCode, Plug, Braces, AlertTriangle
+  Upload, Search, Plus, X, Trash2, Terminal, Code2,
+  Wallet, FileCode, Plug, Braces, AlertTriangle
 } from "lucide-react";
 import { useIDE } from "./hooks/useIDE";
 
@@ -284,53 +284,6 @@ export default function App() {
     </div>
   );
 
-  // ── Right panel ─────────────────────────────────────────────
-
-  const rightPanel = (
-    <div className="ide-right">
-      {/* Contract interaction */}
-      {ide.explorerContract && ide.loadedMethods.length > 0 && (
-        <div className="right-section">
-          <div className="right-section-title">
-            {ide.explorerContract} — Functions
-          </div>
-          {ide.loadedMethods.map((method) => (
-            <MethodCard
-              key={method.name}
-              contract={ide.explorerContract}
-              method={method}
-              onSimulate={ide.simulateCall}
-              onExecute={ide.executeFunction}
-              simulating={ide.simulating}
-              walletConnected={ide.walletConnected}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Variables */}
-      {ide.loadedVars.length > 0 && (
-        <div className="right-section">
-          <div className="right-section-title">Variables</div>
-          {ide.loadedVars.map((v) => (
-            <div
-              key={v}
-              style={{
-                fontSize: 12,
-                fontFamily: "var(--font-mono)",
-                color: "var(--muted)",
-                padding: "3px 0",
-                cursor: "pointer",
-              }}
-              onClick={() => ide.queryState(`${ide.explorerContract}.${v}`)}
-            >
-              {v}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 
   // ── Bottom panel ────────────────────────────────────────────
 
@@ -351,7 +304,16 @@ export default function App() {
       </div>
       <div className="bottom-content">
         {ide.console.map((entry) => (
-          <div key={entry.id} className="console-entry">
+          <div
+            key={entry.id}
+            className="console-entry"
+            style={{ cursor: "pointer" }}
+            title="Click to copy"
+            onClick={() => {
+              navigator.clipboard.writeText(entry.message);
+              ide.log("info", "Copied to clipboard");
+            }}
+          >
             <span className="console-time">
               {new Date(entry.timestamp).toLocaleTimeString()}
             </span>
@@ -431,83 +393,9 @@ export default function App() {
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
             {editorArea}
-            {rightPanel}
           </div>
           {bottomPanel}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Method Card Component ─────────────────────────────────────
-
-function MethodCard({
-  contract,
-  method,
-  onSimulate,
-  onExecute,
-  simulating,
-  walletConnected,
-}: {
-  contract: string;
-  method: { name: string; arguments: Array<{ name: string; type: string }> };
-  onSimulate: (c: string, f: string, kw: Record<string, unknown>) => Promise<unknown>;
-  onExecute: (c: string, f: string, kw: Record<string, unknown>) => Promise<void>;
-  simulating: boolean;
-  walletConnected: boolean;
-}) {
-  const [args, setArgs] = useState<Record<string, string>>({});
-
-  const buildKwargs = (): Record<string, unknown> => {
-    const kw: Record<string, unknown> = {};
-    for (const arg of method.arguments) {
-      const val = args[arg.name] ?? "";
-      if (!val) continue;
-      switch (arg.type) {
-        case "int": kw[arg.name] = parseInt(val, 10); break;
-        case "float": kw[arg.name] = parseFloat(val); break;
-        case "bool": kw[arg.name] = val === "true"; break;
-        case "dict": case "list":
-          try { kw[arg.name] = JSON.parse(val); } catch { kw[arg.name] = val; }
-          break;
-        default: kw[arg.name] = val;
-      }
-    }
-    return kw;
-  };
-
-  return (
-    <div className="method-card">
-      <div className="method-name">{method.name}</div>
-      <div className="method-args">
-        {method.arguments.map((arg) => (
-          <div key={arg.name} className="method-arg-row">
-            <span className="method-arg-label">{arg.name}:</span>
-            <input
-              className="method-arg-input"
-              placeholder={arg.type}
-              value={args[arg.name] ?? ""}
-              onChange={(e) => setArgs({ ...args, [arg.name]: e.target.value })}
-            />
-          </div>
-        ))}
-      </div>
-      <div className="btn-row" style={{ marginTop: 8 }}>
-        <button
-          className="ide-btn ide-btn-secondary ide-btn-sm"
-          disabled={simulating || !walletConnected}
-          onClick={() => onSimulate(contract, method.name, buildKwargs())}
-        >
-          <Eye size={11} /> Simulate
-        </button>
-        <button
-          className="ide-btn ide-btn-primary ide-btn-sm"
-          disabled={!walletConnected}
-          onClick={() => onExecute(contract, method.name, buildKwargs())}
-        >
-          <Play size={11} /> Execute
-        </button>
       </div>
     </div>
   );

@@ -242,8 +242,8 @@ export function useIDE() {
           return;
         }
 
-        const stamps = Math.ceil(estResult.stampsUsed * 1.1) + 1000;
-        log("info", `Simulation OK — ${estResult.stampsUsed.toLocaleString()} stamps used, supplying ${stamps.toLocaleString()} (with margin). Sending to wallet...`);
+        const stamps = estResult.stampsUsed;
+        log("info", `Simulation OK — ${stamps.toLocaleString()} stamps needed. Sending to wallet...`);
 
         const result = await wallet.sendCall({
           contract: "submission",
@@ -286,8 +286,8 @@ export function useIDE() {
             log("error", `Simulation failed: ${est.error ?? "Unknown error"}`);
             return;
           }
-          stampCount = Math.ceil(est.stampsUsed * 1.1) + 1000;
-          log("info", `Simulation OK — ${est.stampsUsed.toLocaleString()} stamps used, supplying ${stampCount.toLocaleString()} (with margin). Sending to wallet...`);
+          stampCount = est.stampsUsed;
+          log("info", `Simulation OK — ${stampCount.toLocaleString()} stamps. Sending to wallet...`);
         }
 
         const result = await wallet.sendCall({

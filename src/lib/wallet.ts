@@ -10,12 +10,29 @@ export interface WalletInfo {
   chainId?: string;
 }
 
+type XianProviderRequestArgs = {
+  method: string;
+  params?: unknown[];
+};
+
+type XianProvider = {
+  request(args: XianProviderRequestArgs): Promise<unknown>;
+  on(event: string, cb: (...args: unknown[]) => void): void;
+  removeListener(event: string, cb: (...args: unknown[]) => void): void;
+};
+
+type XianWindow = Window & {
+  xian?: {
+    provider?: XianProvider;
+  };
+};
+
 export function isWalletAvailable(): boolean {
-  return typeof window !== "undefined" && !!(window as any).xian?.provider;
+  return typeof window !== "undefined" && !!(window as XianWindow).xian?.provider;
 }
 
-function getProvider(): { request(args: { method: string; params?: unknown[] }): Promise<unknown>; on(event: string, cb: (...args: unknown[]) => void): void; removeListener(event: string, cb: (...args: unknown[]) => void): void } {
-  const provider = (window as any).xian?.provider;
+function getProvider(): XianProvider {
+  const provider = (window as XianWindow).xian?.provider;
   if (!provider) {
     throw new Error("Xian wallet extension not detected. Install it and reload.");
   }
@@ -44,14 +61,14 @@ export async function sendCall(payload: {
   contract: string;
   function: string;
   kwargs: Record<string, unknown>;
-  stamps: number;
+  chi: number;
 }): Promise<unknown> {
   return request("xian_sendCall", [{
     intent: {
       contract: payload.contract,
       function: payload.function,
       kwargs: payload.kwargs,
-      stamps: payload.stamps,
+      chiSupplied: payload.chi,
     },
   }]);
 }

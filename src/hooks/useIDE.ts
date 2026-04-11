@@ -199,7 +199,7 @@ export function useIDE() {
           kwargs,
         });
         if (result.success) {
-          log("success", `Simulation OK — ${result.stampsUsed} stamps used`);
+          log("success", `Simulation OK — ${result.chiUsed} chi used`);
           if (result.result !== null && result.result !== undefined) {
             log("result", JSON.stringify(result.result, null, 2));
           }
@@ -242,14 +242,14 @@ export function useIDE() {
           return;
         }
 
-        const stamps = estResult.stampsUsed;
-        log("info", `Simulation OK — ${stamps.toLocaleString()} stamps needed. Sending to wallet...`);
+        const chi = estResult.chiUsed;
+        log("info", `Simulation OK — ${chi.toLocaleString()} chi needed. Sending to wallet...`);
 
         const result = await wallet.sendCall({
           contract: "submission",
           function: "submit_contract",
           kwargs: { name, code },
-          stamps,
+          chi,
         });
 
         log("success", `Contract "${name}" deployed!`);
@@ -266,7 +266,7 @@ export function useIDE() {
   // ── Execute function on-chain ──────────────────────────────
 
   const executeFunction = useCallback(
-    async (contract: string, func: string, kwargs: Record<string, unknown>, stamps?: number) => {
+    async (contract: string, func: string, kwargs: Record<string, unknown>, chi?: number) => {
       if (!walletConnected) {
         log("error", "Connect wallet first");
         return;
@@ -274,8 +274,8 @@ export function useIDE() {
       try {
         log("info", `Simulating ${contract}.${func}()...`);
 
-        let stampCount = stamps;
-        if (!stampCount) {
+        let chiBudget = chi;
+        if (!chiBudget) {
           const est = await rpc.simulate({
             sender: walletAccount!,
             contract,
@@ -286,15 +286,15 @@ export function useIDE() {
             log("error", `Simulation failed: ${est.error ?? "Unknown error"}`);
             return;
           }
-          stampCount = est.stampsUsed;
-          log("info", `Simulation OK — ${stampCount.toLocaleString()} stamps. Sending to wallet...`);
+          chiBudget = est.chiUsed;
+          log("info", `Simulation OK — ${chiBudget.toLocaleString()} chi. Sending to wallet...`);
         }
 
         const result = await wallet.sendCall({
           contract,
           function: func,
           kwargs,
-          stamps: stampCount,
+          chi: chiBudget,
         });
 
         log("success", `${contract}.${func}() executed`);

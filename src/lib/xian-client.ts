@@ -60,7 +60,7 @@ export async function getState(key: string): Promise<unknown> {
 
 export interface SimulationResult {
   success: boolean;
-  stampsUsed: number;
+  chiUsed: number;
   result: unknown;
   error?: string;
   stateChanges?: Record<string, unknown>;
@@ -93,29 +93,30 @@ export async function simulate(payload: {
   const url = `${rpcUrl}/abci_query?path=%22/simulate_tx/${hex}%22`;
   const resp = await fetch(url);
   if (!resp.ok) {
-    return { success: false, stampsUsed: 0, result: null, error: `RPC error: ${resp.status}` };
+    return { success: false, chiUsed: 0, result: null, error: `RPC error: ${resp.status}` };
   }
   const raw = await resp.json();
   const response = raw?.result?.response;
   if (!response) {
-    return { success: false, stampsUsed: 0, result: null, error: "No simulation response" };
+    return { success: false, chiUsed: 0, result: null, error: "No simulation response" };
   }
 
   if (response.code !== 0) {
-    return { success: false, stampsUsed: 0, result: null, error: response.log ?? `code ${response.code}` };
+    return { success: false, chiUsed: 0, result: null, error: response.log ?? `code ${response.code}` };
   }
 
   try {
     const decoded = JSON.parse(base64ToUtf8(response.value));
+    const stateChanges = decoded.state_changes ?? decoded.state;
     return {
       success: decoded.status === 0,
-      stampsUsed: Number(decoded.stamps_used ?? 0),
+      chiUsed: Number(decoded.chi_used ?? 0),
       result: decoded.result ?? null,
       error: decoded.status !== 0 ? String(decoded.result ?? "Simulation failed") : undefined,
-      stateChanges: typeof decoded.state_changes === "object" ? decoded.state_changes : undefined,
+      stateChanges: typeof stateChanges === "object" ? stateChanges : undefined,
     };
   } catch {
-    return { success: false, stampsUsed: 0, result: null, error: "Failed to parse simulation result" };
+    return { success: false, chiUsed: 0, result: null, error: "Failed to parse simulation result" };
   }
 }
 

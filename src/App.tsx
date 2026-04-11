@@ -58,11 +58,17 @@ export default function App() {
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const ideRef = useRef(ide);
-  ideRef.current = ide;
   const deployNameRef = useRef(deployName);
-  deployNameRef.current = deployName;
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    ideRef.current = ide;
+  }, [ide]);
+
+  useEffect(() => {
+    deployNameRef.current = deployName;
+  }, [deployName]);
 
   const showToast = (msg: string) => {
     setToast(msg);

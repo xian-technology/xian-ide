@@ -10,6 +10,20 @@ The app is a Vite + React + TypeScript single-page app. It is
 self-contained and consumes the public `@xian-tech/client` and
 `@xian-tech/provider` packages from npm.
 
+## Browser Flow
+
+```mermaid
+flowchart LR
+  Author["Contract author"] --> Editor["Monaco editor"]
+  Editor --> Linter["xian-linter bridge"]
+  Editor --> Simulator["Readonly calls and simulation"]
+  Editor --> Wallet["Injected wallet provider"]
+  Wallet --> Node["Xian node"]
+  Templates["Contract templates"] --> Editor
+  Client["@xian-tech/client"] --> Simulator
+  Simulator --> Node
+```
+
 ## Quick Start
 
 ```bash

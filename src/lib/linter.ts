@@ -3,7 +3,7 @@
  * Calls the xian-linter HTTP server at /lint.
  *
  * Start the linter server with:
- *   pip install xian-tech-linter[server]
+ *   uv add "xian-tech-linter[server]"
  *   uvicorn xian_linter.server:create_app --factory --port 8000
  */
 
